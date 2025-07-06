@@ -87,7 +87,7 @@ All routes are defined in `RouteManager.jsx` with two layers of protection:
 1.  **Clone the repo**
 
     ```bash
-    git clone https://github.com/your-org/olahire-frontend.git
+    git clone https://github.com/OldAlexhub/olahirefe.git
     cd olahire-frontend
     ```
 
