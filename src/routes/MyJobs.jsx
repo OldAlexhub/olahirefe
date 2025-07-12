@@ -18,7 +18,7 @@ const MyJobs = () => {
           }
         );
 
-        console.log("API raw response:", response.data);
+        //console.log("API raw response:", response.data);
 
         const jobs = response.data?.jobs;
 
@@ -64,6 +64,7 @@ const MyJobs = () => {
                 <th>Company</th>
                 <th>Match %</th>
                 <th>Years of Experience</th>
+                <th>Status</th>
                 <th>Judgment</th>
               </tr>
             </thead>
@@ -74,6 +75,7 @@ const MyJobs = () => {
                   <td>{job.company}</td>
                   <td>{(job.match_percent * 100).toFixed(1)}%</td>
                   <td>{job.years_of_experience || 0}</td>
+                  <td>{job.status || "Not Set"}</td>
                   <td>{renderJudgment(job.match_percent)}</td>
                 </tr>
               ))}

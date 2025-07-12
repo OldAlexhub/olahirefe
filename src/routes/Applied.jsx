@@ -9,6 +9,7 @@ const Applied = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [statusEdits, setStatusEdits] = useState({}); // unsaved changes
 
   useEffect(() => {
     const fetchApplicants = async () => {
@@ -24,6 +25,7 @@ const Applied = () => {
         );
 
         const data = response.data?.applicants || [];
+        //console.log("Fetched applicants:", data); // ✅ Confirm status exists
         setApplicants(data);
         setSortedApplicants(sortByMatch(data, "desc"));
       } catch (error) {
@@ -49,6 +51,50 @@ const Applied = () => {
     const order = e.target.value;
     setSortOrder(order);
     setSortedApplicants(sortByMatch(applicants, order));
+  };
+
+  const getKey = (userId, jobNumber) => `${userId}|${jobNumber}`;
+
+  const handleStatusChange = (userId, jobNumber, newStatus) => {
+    const key = getKey(userId, jobNumber);
+    setStatusEdits((prev) => ({
+      ...prev,
+      [key]: newStatus,
+    }));
+  };
+
+  const saveStatus = async (userId, jobNumber, idx) => {
+    const key = getKey(userId, jobNumber);
+    const newStatus = statusEdits[key];
+    if (!newStatus) return;
+
+    try {
+      const token = localStorage.getItem("adminToken");
+      await axios.put(
+        `${process.env.REACT_APP_BASE_LINK}/updateapplicantstatus/${userId}/${jobNumber}`,
+        { status: newStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Update UI locally
+      const updated = [...sortedApplicants];
+      updated[idx].status = newStatus;
+      setSortedApplicants(updated);
+
+      // Clear the edit buffer
+      setStatusEdits((prev) => {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      });
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      alert("Could not update status");
+    }
   };
 
   const interpretMatch = (percent) => {
@@ -105,25 +151,68 @@ const Applied = () => {
                 <th>Match Score</th>
                 <th>Years of Experience</th>
                 <th>Recommendation</th>
+                <th>Status</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {sortedApplicants.map((app, idx) => (
-                <tr key={idx}>
-                  <td>
-                    <Link
-                      to={`/applicantprofile/${app.userId}`}
-                      className="fw-bold text-decoration-none"
-                    >
-                      {app.userId || "Unknown"}
-                    </Link>
-                  </td>
-                  <td>{app.jobTitle}</td>
-                  <td>{formatPercent(app.match_percent)}</td>
-                  <td>{app.years_of_experience}</td>
-                  <td>{interpretMatch(app.match_percent)}</td>
-                </tr>
-              ))}
+              {sortedApplicants.map((app, idx) => {
+                const key = getKey(app.userId, app.jobNumber);
+                const currentStatus =
+                  statusEdits[key] !== undefined
+                    ? statusEdits[key]
+                    : app.status || "";
+
+                return (
+                  <tr key={idx}>
+                    <td>
+                      <Link
+                        to={`/applicantprofile/${app.userId}`}
+                        className="fw-bold text-decoration-none"
+                      >
+                        {app.userId || "Unknown"}
+                      </Link>
+                    </td>
+                    <td>{app.jobTitle}</td>
+                    <td>{formatPercent(app.match_percent)}</td>
+                    <td>{app.years_of_experience}</td>
+                    <td>{interpretMatch(app.match_percent)}</td>
+                    <td>
+                      <select
+                        className="form-select"
+                        value={currentStatus}
+                        onChange={(e) =>
+                          handleStatusChange(
+                            app.userId,
+                            app.jobNumber,
+                            e.target.value
+                          )
+                        }
+                      >
+                        <option value="">Select Status</option>
+                        <option value="received">Received</option>
+                        <option value="reviewed">Reviewed</option>
+                        <option value="considered">Considered</option>
+                        <option value="not selected">Not Selected</option>
+                        <option value="selected for interview">
+                          Selected for Interview
+                        </option>
+                      </select>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        disabled={!statusEdits[key]}
+                        onClick={() =>
+                          saveStatus(app.userId, app.jobNumber, idx)
+                        }
+                      >
+                        Save
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
